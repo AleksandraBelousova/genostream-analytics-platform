@@ -1,0 +1,181 @@
+
+![python-badge](https://img.shields.io/badge/Python-3.9-3776AB.svg?style=for-the-badge&logo=python)
+
+
+![fastapi-badge](https://img.shields.io/badge/FastAPI-0.100-009688.svg?style=for-the-badge&logo=fastapi)
+
+
+![clickhouse-badge](https://img.shields.io/badge/ClickHouse-23.8-FFCC01.svg?style=for-the-badge&logo=clickhouse)
+
+
+![docker-badge](https://img.shields.io/badge/Docker-24.0-2496ED.svg?style=for-the-badge&logo=docker)
+
+A containerised OLAP system designed for high-throughput querying of scRNA-seq datasets. A Python ETL pipeline processes sparse .mtx expression matrices, joins cell metadata, and ingests tidy data into a ClickHouse database. An asynchronous FastAPI service exposes endpoints for subset queries and server-side aggregations (e.g., Pearson correlation). The stack is orchestrated via Docker Compose.
+
+Core Concepts
+
+High-Performance Database: Utilises ClickHouse, a columnar OLAP database, for sub-second analytical queries on hundreds of millions of rows.
+
+Efficient ETL: The Python ingestion pipeline is designed for memory efficiency, processing large sparse matrices and enriching data on-the-fly without loading entire files into memory.
+
+Asynchronous API: A modern FastAPI backend provides a non-blocking, high-concurrency API for data access.
+
+Server-Side Analytics: Heavy computations like correlation and coefficient of variation are delegated to the powerful ClickHouse engine, minimising API server load and network traffic.
+
+Reproducible Environment: The entire platform is containerised with Docker and orchestrated by a single docker-compose.yml file, ensuring a consistent and isolated environment.
+
+Architecture Overview
+code
+Code
+download
+content_copy
+expand_less
+
+┌──────────────────┐     ┌──────────────────────┐     ┌───────────────────┐     ┌─────────────────┐
+│   Data Sources   │────▶│   ETL Pipeline     │────▶│  ClickHouse DB  │◀───▶│   FastAPI API   │
+│ (Broad Institute)│     │ (Python, Scipy, Pandas)│     │   (OLAP Storage)  │     │ (Data Endpoints)│
+└──────────────────┘     └──────────────────────┘     └───────────────────┘     └─────────────────┘
+         │                          │                          ▲                          │
+         │                          │                      SQL Queries                    │
+         └──────────────────────────┴──────────────────────────┴──────────────────────────┘
+                                      HTTP Requests from User/Client
+Tech Stack
+Component	Technology / Library
+Database	ClickHouse
+API Framework	FastAPI
+Data Ingestion	Python, Pandas, Scipy, clickhouse-driver
+Containerization	Docker, Docker Compose
+Configuration	Pydantic, python-dotenv
+Getting Started
+Prerequisites
+
+Docker & Docker Compose
+
+Git
+
+Python 3.9+
+
+1. Clone the Repository
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+git clone https://github.com/AleksandraBelousova/genostream-analytics-platform.git
+cd genostream-analytics-platform
+2. Configure Environment
+
+The system uses a .env file for secure configuration.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# Create a .env file from the example
+cp .env.example .env
+
+No changes are required in the .env file to run the project locally.
+
+3. Data Acquisition
+
+The ETL pipeline requires four specific data files from the Broad Institute's Single Cell Portal.
+
+Navigate to the study page: A single-cell landscape of high-grade serous ovarian cancer
+
+Download the following four files directly into the data/external/ directory:
+
+All.meta2.txt (The full metadata file)
+
+Epi.barcodes2.tsv (Barcodes for epithelial cells)
+
+Epi.genes.tsv (Gene names for epithelial cells)
+
+gene_sorted-Epi.matrix.mtx (The expression matrix for epithelial cells)
+
+The data/external/ directory should now contain these four files.
+
+4. Launch the System
+
+This command will build the API image, start the ClickHouse and API containers, and run them in the background.
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+docker-compose up --build
+
+Wait until you see the log message INFO: Uvicorn running on http://0.0.0.0:8000. The system is now ready. Keep this terminal running.
+
+5. Run the ETL Pipeline
+
+Open a new, separate terminal and execute the following commands:
+
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+# Install required Python packages for the script
+pip install -r requirements.txt scipy
+
+# Run the ingestion script
+python src/ingestion/pipeline.py
+
+This process will take several minutes as it ingests over 170 million records into the database. Wait for the --- ETL Process Finished --- message.
+
+API Usage
+
+Once the ETL process is complete, the API is ready for analytical queries.
+
+Interactive Documentation
+
+The best way to explore the API is through the interactive Swagger UI, automatically generated by FastAPI:
+
+▶️ http://localhost:8000/docs
+
+curl Examples
+Get Gene Correlation
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+curl -X 'POST' \
+  'http://localhost:8000/gene-correlation' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "gene_a": "EPCAM",
+  "gene_b": "KRT18",
+  "cell_types": [
+    "Epithelial"
+  ]
+}'
+Get Gene Variability
+code
+Bash
+download
+content_copy
+expand_less
+IGNORE_WHEN_COPYING_START
+IGNORE_WHEN_COPYING_END
+curl -X 'POST' \
+  'http://localhost:8000/gene-variability' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "cell_type": "Epithelial",
+  "limit": 5
+}'
