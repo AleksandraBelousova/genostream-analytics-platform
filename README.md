@@ -78,7 +78,6 @@ IGNORE_WHEN_COPYING_END
 # CLICKHOUSE_USER=user
 # CLICKHOUSE_PASSWORD=your_very_secret_password
 
-(You can copy the content above and save it as .env)
 
 3. Data Acquisition
 
