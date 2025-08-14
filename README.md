@@ -10,21 +10,19 @@
 
 ![docker-badge](https://img.shields.io/badge/Docker-24.0-2496ED.svg?style=for-the-badge&logo=docker)
 
-A containerised OLAP system designed for high-throughput querying of scRNA-seq datasets. A Python ETL pipeline processes sparse .mtx expression matrices, joins cell metadata, and ingests tidy data into a ClickHouse database. An asynchronous FastAPI service exposes endpoints for subset queries and server-side aggregations (e.g., Pearson correlation). The stack is orchestrated via Docker Compose.
+A containerised OLAP system for querying scRNA-seq data. The system features a Python ETL pipeline that processes .mtx sparse matrices, joins cell metadata, and ingests tidy data into a ClickHouse database. An asynchronous FastAPI service exposes endpoints for data subsetting and server-side aggregations (e.g., Pearson correlation). The stack is orchestrated via Docker Compose.
 
-Core Concepts
+Functionality
 
-High-Performance Database: Utilises ClickHouse, a columnar OLAP database, for sub-second analytical queries on hundreds of millions of rows.
+Database: Stores scRNA-seq data in a columnar ClickHouse database using a tidy schema (cell, gene, value, patient, cell_type).
 
-Efficient ETL: The Python ingestion pipeline is designed for memory efficiency, processing large sparse matrices and enriching data on-the-fly without loading entire files into memory.
+ETL: Ingests data from sparse Matrix Market (.mtx), barcode (.tsv), and gene (.tsv) file formats.
 
-Asynchronous API: A modern FastAPI backend provides a non-blocking, high-concurrency API for data access.
+API: Exposes data through an asynchronous FastAPI backend.
 
-Server-Side Analytics: Heavy computations like correlation and coefficient of variation are delegated to the powerful ClickHouse engine, minimising API server load and network traffic.
+Analytics: Provides endpoints for server-side calculations, including Pearson correlation and coefficient of variation.
 
-Reproducible Environment: The entire platform is containerised with Docker and orchestrated by a single docker-compose.yml file, ensuring a consistent and isolated environment.
-
-Architecture Overview
+Architecture
 code
 Code
 download
@@ -35,10 +33,6 @@ expand_less
 │   Data Sources   │────▶│   ETL Pipeline     │────▶│  ClickHouse DB  │◀───▶│   FastAPI API   │
 │ (Broad Institute)│     │ (Python, Scipy, Pandas)│     │   (OLAP Storage)  │     │ (Data Endpoints)│
 └──────────────────┘     └──────────────────────┘     └───────────────────┘     └─────────────────┘
-         │                          │                          ▲                          │
-         │                          │                      SQL Queries                    │
-         └──────────────────────────┴──────────────────────────┴──────────────────────────┘
-                                      HTTP Requests from User/Client
 Tech Stack
 Component	Technology / Library
 Database	ClickHouse
@@ -46,7 +40,7 @@ API Framework	FastAPI
 Data Ingestion	Python, Pandas, Scipy, clickhouse-driver
 Containerization	Docker, Docker Compose
 Configuration	Pydantic, python-dotenv
-Getting Started
+Setup and Deployment
 Prerequisites
 
 Docker & Docker Compose
@@ -67,7 +61,7 @@ git clone https://github.com/AleksandraBelousova/genostream-analytics-platform.g
 cd genostream-analytics-platform
 2. Configure Environment
 
-The system uses a .env file for secure configuration.
+The system uses a .env file for configuration. Create one from the provided example.
 
 code
 Bash
@@ -76,32 +70,35 @@ content_copy
 expand_less
 IGNORE_WHEN_COPYING_START
 IGNORE_WHEN_COPYING_END
-# Create a .env file from the example
-cp .env.example .env
+# In the project root, create a file named .env with the following content:
+# API_PORT=8000
+# CLICKHOUSE_PORT_HTTP=8123
+# CLICKHOUSE_PORT_NATIVE=9000
+# CLICKHOUSE_DB=genostream
+# CLICKHOUSE_USER=user
+# CLICKHOUSE_PASSWORD=your_very_secret_password
 
-No changes are required in the .env file to run the project locally.
+(You can copy the content above and save it as .env)
 
 3. Data Acquisition
 
-The ETL pipeline requires four specific data files from the Broad Institute's Single Cell Portal.
+The ETL pipeline requires four specific files from the Broad Institute's Single Cell Portal.
 
-Navigate to the study page: A single-cell landscape of high-grade serous ovarian cancer
+Navigate to the study download page: SCP259 Download
 
-Download the following four files directly into the data/external/ directory:
+Download the following four files into the data/external/ directory:
 
-All.meta2.txt (The full metadata file)
+All.meta2.txt
 
-Epi.barcodes2.tsv (Barcodes for epithelial cells)
+Epi.barcodes2.tsv
 
-Epi.genes.tsv (Gene names for epithelial cells)
+Epi.genes.tsv
 
-gene_sorted-Epi.matrix.mtx (The expression matrix for epithelial cells)
-
-The data/external/ directory should now contain these four files.
+gene_sorted-Epi.matrix.mtx
 
 4. Launch the System
 
-This command will build the API image, start the ClickHouse and API containers, and run them in the background.
+This command builds the API image and starts the ClickHouse and API containers.
 
 code
 Bash
@@ -112,11 +109,11 @@ IGNORE_WHEN_COPYING_START
 IGNORE_WHEN_COPYING_END
 docker-compose up --build
 
-Wait until you see the log message INFO: Uvicorn running on http://0.0.0.0:8000. The system is now ready. Keep this terminal running.
+Wait for the log message INFO: Uvicorn running on http://0.0.0.0:8000. Keep this terminal running.
 
 5. Run the ETL Pipeline
 
-Open a new, separate terminal and execute the following commands:
+Open a new terminal and execute the following commands:
 
 code
 Bash
@@ -131,15 +128,15 @@ pip install -r requirements.txt scipy
 # Run the ingestion script
 python src/ingestion/pipeline.py
 
-This process will take several minutes as it ingests over 170 million records into the database. Wait for the --- ETL Process Finished --- message.
+Wait for the --- ETL Process Finished --- message.
 
 API Usage
 
-Once the ETL process is complete, the API is ready for analytical queries.
+The API is accessible while the Docker containers are running.
 
 Interactive Documentation
 
-The best way to explore the API is through the interactive Swagger UI, automatically generated by FastAPI:
+API endpoints can be tested through the Swagger UI:
 
 ▶️ http://localhost:8000/docs
 
