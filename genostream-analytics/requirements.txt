@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+clickhouse-driver[numpy]
+pandas
+python-dotenv
+pydantic-settings
